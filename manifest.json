@@ -1,7 +1,7 @@
 {
     "icon": "https://api.iconify.design/twemoji/safety-pin.svg?color=%23FFFFFF",
     "title": "行眼 AI SAFETY SENTINEL",
-    "url": "https://ct81.github.io/liangshan/main.html",
+    "url": "https://ct81.github.io/liangshan/index.html",
     "description": "行眼 AI SAFETY SENTINEL",
     "configCommand": "do_config",
     "enabled": true
