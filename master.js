@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                         console.log("=====GET1: " + obj);
                         window.open(locationParent + '/index.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
+                    else if (obj == 'submenu_2_clicked') {
+                        console.log("=====GET2: " + obj);
+                        window.open(locationParent + '/FireSmokeWaterDetection/web/index.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    }
                     // else if (obj == 'submenu_2_clicked') {
                     //     console.log("=====GET2: " + obj);
                     //     window.open(locationParent + '/facereg.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
@@ -48,6 +52,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 {
                     title: "PPE",
                     icon: "https://img.icons8.com/fluency/48/worker-beard.png",
+                    command: "submenu_1_clicked",
+                },
+                {
+                    title: "QuadraSense",
+                    icon: "https://img.icons8.com/bubbles/100/fire-element.png",
                     command: "submenu_1_clicked",
                 }
                 // ,{
