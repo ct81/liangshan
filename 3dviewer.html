@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Model Viewer - IFC, GLTF, OBJ, FBX Support + Object Selection</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 500px;
+            background: rgba(30,30,40,0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 16px 20px;
+            color: #f0f0f0;
+            border-left: 5px solid #ffaa44;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            pointer-events: auto;
+            z-index: 10;
+            font-size: 14px;
+            transition: 0.2s;
+            font-family: monospace;
+        }
+        #info-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #ffaa44;
+            font-size: 1rem;
+        }
+        #info-content {
+            word-break: break-word;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 20;
+            pointer-events: auto;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-family: system-ui;
+            min-width: 180px;
+        }
+        button {
+            background: #2c3e66;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        button:hover {
+            background: #1e2b46;
+            transform: scale(1.02);
+        }
+        .color-btn {
+            background: #e67e22;
+        }
+        .color-btn:hover {
+            background: #b45f1b;
+        }
+        .reset-btn {
+            background: #2c5a2e;
+        }
+        .reset-btn:hover {
+            background: #1e3e20;
+        }
+        .selected-indicator {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #ffaa44;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 10;
+            font-family: monospace;
+            font-weight: bold;
+            border-left: 3px solid #ffaa44;
+        }
+        input[type="color"] {
+            width: 45px;
+            height: 35px;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+        }
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .file-input-label {
+            background: #3a5a8f;
+            padding: 8px 14px;
+            border-radius: 40px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .file-input-label:hover {
+            background: #2c4468;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .status {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 6px;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .controls { top: 10px; right: 10px; padding: 10px; gap: 8px; min-width: 150px; }
+            #info-panel { left: 10px; right: 10px; bottom: 10px; max-width: none; padding: 12px; }
+            .selected-indicator { top: 80px; left: 10px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="flex-row">
+            <label class="file-input-label">
+                📁 Load Model (IFC/GLTF/OBJ/FBX)
+                <input type="file" id="fileInput" accept=".ifc,.gltf,.glb,.obj,.fbx">
+            </label>
+        </div>
+        <div class="flex-row">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="colorObjectBtn" class="color-btn">🎨 Apply Color</button>
+                <input type="color" id="colorPicker" value="#ffaa44">
+            </div>
+            <button id="resetTransparentBtn" class="reset-btn">🔲 Make Transparent</button>
+        </div>
+        <div class="status" id="statusMsg">✅ Ready! Click on any object to select it</div>
+    </div>
+
+    <div id="info-panel">
+        <div id="info-title">📋 Object Information (JSON Format)</div>
+        <div id="info-content">Click on any 3D object to see its data here</div>
+    </div>
+
+    <div class="selected-indicator" id="selectedIndicator">📍 No object selected</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/",
+                "web-ifc": "https://unpkg.com/web-ifc@0.0.51/web-ifc-api.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // Setup scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a2a);
+        scene.fog = new THREE.FogExp2(0x0a0a2a, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 4, 6);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = true;
+        controls.maxPolarAngle = Math.PI / 1.8;
+        
+        // Enhanced Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(5, 10, 3);
+        mainLight.castShadow = true;
+        mainLight.receiveShadow = true;
+        mainLight.shadow.mapSize.width = 1024;
+        mainLight.shadow.mapSize.height = 1024;
+        scene.add(mainLight);
+        
+        const fillLight = new THREE.PointLight(0x4466cc, 0.5);
+        fillLight.position.set(-2, 3, 4);
+        scene.add(fillLight);
+        
+        const rimLight = new THREE.PointLight(0xffaa66, 0.4);
+        rimLight.position.set(2, 3, -3);
+        scene.add(rimLight);
+        
+        const backLight = new THREE.PointLight(0x66aaff, 0.3);
+        backLight.position.set(0, 2, -4);
+        scene.add(backLight);
+        
+        // Helper grid
+        const gridHelper = new THREE.GridHelper(15, 20, 0x88aaff, 0x335588);
+        gridHelper.position.y = -0.8;
+        scene.add(gridHelper);
+        
+        // Store objects
+        let allObjects = [];
+        let currentModelGroup = null;
+        let selectedObject = null;
+        let highlightOutline = null;
+        
+        // Function to collect all meshes
+        function updateObjectList() {
+            allObjects = [];
+            const collect = (obj) => {
+                if (obj.isMesh) {
+                    allObjects.push(obj);
+                    obj.raycast = THREE.Mesh.prototype.raycast;
+                }
+                if (obj.children) {
+                    obj.children.forEach(child => collect(child));
+                }
+            };
+            
+            if (currentModelGroup) {
+                collect(currentModelGroup);
+            }
+            
+            scene.children.forEach(child => {
+                if (child.isMesh) {
+                    allObjects.push(child);
+                }
+                if (child.children) {
+                    child.children.forEach(grandChild => {
+                        if (grandChild.isMesh) {
+                            allObjects.push(grandChild);
+                        }
+                    });
+                }
+            });
+            
+            console.log("Objects available for selection:", allObjects.length);
+        }
+        
+        // Highlight selected object
+        function highlightObject(obj) {
+            if (highlightOutline) {
+                scene.remove(highlightOutline);
+                highlightOutline = null;
+            }
+            
+            if (obj) {
+                const box = new THREE.Box3().setFromObject(obj);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+                
+                const geometry = new THREE.SphereGeometry(Math.max(size.x, size.y, size.z) * 0.7, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0xffaa44, 
+                    wireframe: true, 
+                    transparent: true, 
+                    opacity: 0.6 
+                });
+                highlightOutline = new THREE.Mesh(geometry, material);
+                highlightOutline.position.copy(center);
+                scene.add(highlightOutline);
+            }
+        }
+        
+        // Get JSON info for object
+        function getObjectInfo(obj) {
+            const info = {
+                name: obj.name || "Unnamed Object",
+                type: obj.type,
+                id: obj.id,
+                position: {
+                    x: obj.position.x.toFixed(3),
+                    y: obj.position.y.toFixed(3),
+                    z: obj.position.z.toFixed(3)
+                },
+                scale: {
+                    x: obj.scale.x.toFixed(3),
+                    y: obj.scale.y.toFixed(3),
+                    z: obj.scale.z.toFixed(3)
+                },
+                rotation: {
+                    x: (obj.rotation.x * 180 / Math.PI).toFixed(1) + "°",
+                    y: (obj.rotation.y * 180 / Math.PI).toFixed(1) + "°",
+                    z: (obj.rotation.z * 180 / Math.PI).toFixed(1) + "°"
+                }
+            };
+            
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    info.material = {
+                        type: obj.material[0]?.type || "Unknown",
+                        color: obj.material[0]?.color ? "#" + obj.material[0].color.getHexString() : "N/A",
+                        transparent: obj.material[0]?.transparent || false
+                    };
+                } else {
+                    info.material = {
+                        type: obj.material.type,
+                        color: obj.material.color ? "#" + obj.material.color.getHexString() : "N/A",
+                        transparent: obj.material.transparent || false,
+                        opacity: obj.material.opacity !== undefined ? obj.material.opacity : 1,
+                        metalness: obj.material.metalness || 0,
+                        roughness: obj.material.roughness || 0
+                    };
+                }
+            }
+            
+            if (obj.geometry) {
+                info.geometry = {
+                    type: obj.geometry.type,
+                    vertices: obj.geometry.attributes.position?.count || 0,
+                    faces: obj.geometry.index?.count / 3 || 0
+                };
+            }
+            
+            if (obj.userData && Object.keys(obj.userData).length > 0) {
+                info.userData = obj.userData;
+            }
+            
+            return info;
+        }
+        
+        function displayInfo(obj) {
+            const info = getObjectInfo(obj);
+            const jsonStr = JSON.stringify(info, null, 2);
+            document.getElementById('info-content').innerHTML = `<pre style="margin:0; font-family:monospace; white-space:pre-wrap; font-size:11px; color:#aaffaa;">${jsonStr}</pre>`;
+            document.getElementById('info-title').innerHTML = `📌 ${obj.name || 'Object'} (ID: ${obj.id})`;
+            document.getElementById('selectedIndicator').innerHTML = `📍 Selected: ${obj.name || obj.type} (ID: ${obj.id})`;
+        }
+        
+        // Raycaster for selection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        renderer.domElement.style.cursor = 'pointer';
+        
+        window.addEventListener('click', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(allObjects);
+            
+            if (intersects.length > 0) {
+                const clickedObject = intersects[0].object;
+                selectedObject = clickedObject;
+                displayInfo(clickedObject);
+                highlightObject(clickedObject);
+                updateStatus(`✓ Selected: ${clickedObject.name || clickedObject.type}`);
+            } else {
+                updateStatus("No object clicked. Click on any 3D object to select it");
+                if (highlightOutline) {
+                    scene.remove(highlightOutline);
+                    highlightOutline = null;
+                }
+            }
+        });
+        
+        function updateStatus(msg) {
+            const statusDiv = document.getElementById('statusMsg');
+            statusDiv.innerHTML = msg;
+            setTimeout(() => {
+                if (document.getElementById('statusMsg').innerHTML === msg) {
+                    document.getElementById('statusMsg').innerHTML = "✅ Ready! Click on objects to select them";
+                }
+            }, 3000);
+        }
+        
+        // Color and transparency functions
+        function setColorToSelected(hexColor) {
+            if (selectedObject && selectedObject.isMesh) {
+                const materials = Array.isArray(selectedObject.material) ? selectedObject.material : [selectedObject.material];
+                materials.forEach(mat => {
+                    mat.color.set(hexColor);
+                    mat.transparent = false;
+                    mat.opacity = 1;
+                });
+                updateStatus(`✓ Color changed to ${hexColor} for ${selectedObject.name}`);
+                displayInfo(selectedObject);
+            } else {
+                updateStatus("⚠️ No object selected! Click on an object first.");
+            }
+        }
+        
+        function resetAllToTransparent() {
+            allObjects.forEach(obj => {
+                if (obj.isMesh && obj.material) {
+                    const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+                    materials.forEach(mat => {
+                        mat.transparent = true;
+                        mat.opacity = 0.35;
+                    });
+                }
+            });
+            updateStatus("🔲 All objects are now transparent (opacity: 0.35)");
+        }
+        
+        // IFC Loading using web-ifc with correct API
+        async function loadIFCModel(file, url) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    // Import web-ifc and IFCLoader
+                    const webIfc = await import('web-ifc');
+                    const { IFCLoader } = await import('three/addons/loaders/IFCLoader.js');
+                    
+                    const ifcLoader = new IFCLoader();
+                    
+                    // Initialize the IFC API correctly
+                    const ifcAPI = new webIfc.IfcAPI();
+                    await ifcAPI.Init();
+                    ifcLoader.ifcManager.setAPI(ifcAPI);
+                    
+                    // Load the model
+                    const model = await ifcLoader.loadAsync(url);
+                    resolve(model);
+                } catch (error) {
+                    console.error("IFC Load Error:", error);
+                    reject(error);
+                }
+            });
+        }
+        
+        // Load GLTF/GLB model
+        async function loadGLTFModel(url) {
+            const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+            const loader = new GLTFLoader();
+            const gltf = await loader.loadAsync(url);
+            return gltf.scene;
+        }
+        
+        // Load OBJ model
+        async function loadOBJModel(url) {
+            const { OBJLoader } = await import('three/addons/loaders/OBJLoader.js');
+            const loader = new OBJLoader();
+            const objModel = await loader.loadAsync(url);
+            return objModel;
+        }
+        
+        // Load FBX model
+        async function loadFBXModel(url) {
+            const { FBXLoader } = await import('three/addons/loaders/FBXLoader.js');
+            const loader = new FBXLoader();
+            const fbxModel = await loader.loadAsync(url);
+            return fbxModel;
+        }
+        
+        // Main model loading function
+        async function loadModel(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const url = URL.createObjectURL(file);
+            
+            if (currentModelGroup) {
+                scene.remove(currentModelGroup);
+                currentModelGroup = null;
+            }
+            
+            updateStatus("Loading " + file.name + "...");
+            
+            try {
+                let modelGroup = new THREE.Group();
+                let loadedModel = null;
+                
+                if (ext === 'ifc') {
+                    updateStatus("Loading IFC model (this may take a moment for large files)...");
+                    loadedModel = await loadIFCModel(file, url);
+                    modelGroup.add(loadedModel);
+                    updateStatus("✅ IFC model loaded successfully!");
+                } 
+                else if (ext === 'gltf' || ext === 'glb') {
+                    loadedModel = await loadGLTFModel(url);
+                    modelGroup.add(loadedModel);
+                    updateStatus("✅ GLTF/GLB model loaded successfully!");
+                }
+                else if (ext === 'obj') {
+                    loadedModel = await loadOBJModel(url);
+                    modelGroup.add(loadedModel);
+                    updateStatus("✅ OBJ model loaded successfully!");
+                }
+                else if (ext === 'fbx') {
+                    loadedModel = await loadFBXModel(url);
+                    modelGroup.add(loadedModel);
+                    updateStatus("✅ FBX model loaded successfully!");
+                }
+                else {
+                    updateStatus("Unsupported format: " + ext + ". Please use IFC, GLTF, OBJ, or FBX");
+                    URL.revokeObjectURL(url);
+                    return;
+                }
+                
+                // Center and scale the model
+                const box = new THREE.Box3().setFromObject(modelGroup);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                modelGroup.position.sub(center);
+                modelGroup.position.y += (size.y / 2) + 0.2;
+                
+                // Scale if too large
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 10) {
+                    const scale = 8 / maxDim;
+                    modelGroup.scale.set(scale, scale, scale);
+                }
+                
+                currentModelGroup = modelGroup;
+                scene.add(currentModelGroup);
+                updateObjectList();
+                
+                // Adjust camera to fit model
+                const boundingBox = new THREE.Box3().setFromObject(currentModelGroup);
+                const sphere = boundingBox.getBoundingSphere(new THREE.Sphere());
+                if (sphere.radius > 0.1) {
+                    const dist = Math.max(sphere.radius * 2.5, 4);
+                    camera.position.set(dist, dist * 0.8, dist);
+                    controls.target.set(0, sphere.center.y, 0);
+                    controls.update();
+                }
+                
+                updateStatus(`✅ ${file.name} loaded! Click on any part to see its properties.`);
+                
+            } catch (err) {
+                console.error(err);
+                updateStatus("Error loading model: " + err.message);
+                if (currentModelGroup) scene.remove(currentModelGroup);
+                currentModelGroup = null;
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        // Create demo objects for testing
+        function createDemoScene() {
+            const group = new THREE.Group();
+            
+            // Red Cube
+            const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+            const cubeMat = new THREE.MeshStandardMaterial({ color: 0xff3333, metalness: 0.3, roughness: 0.4 });
+            const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            cube.position.set(-1.8, 0.5, 0);
+            cube.name = "Red Cube";
+            cube.userData = { description: "A shiny red cube", category: "basic shapes" };
+            group.add(cube);
+            
+            // Blue Sphere
+            const sphereGeo = new THREE.SphereGeometry(0.6, 64, 64);
+            const sphereMat = new THREE.MeshStandardMaterial({ color: 0x3399ff, metalness: 0.4, roughness: 0.2 });
+            const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+            sphere.position.set(1.8, 0.6, 0);
+            sphere.name = "Blue Sphere";
+            sphere.userData = { description: "A smooth blue sphere", category: "basic shapes" };
+            group.add(sphere);
+            
+            // Green Cylinder
+            const cylinderGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 32);
+            const cylinderMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, metalness: 0.2, roughness: 0.5 });
+            const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+            cylinder.position.set(0, 0.6, 1.8);
+            cylinder.name = "Green Cylinder";
+            cylinder.userData = { description: "A tall green cylinder", category: "basic shapes" };
+            group.add(cylinder);
+            
+            // Purple Torus
+            const torusGeo = new THREE.TorusGeometry(0.7, 0.12, 64, 128);
+            const torusMat = new THREE.MeshStandardMaterial({ color: 0xff44ff, metalness: 0.6, roughness: 0.3 });
+            const torus = new THREE.Mesh(torusGeo, torusMat);
+            torus.position.set(0, 0.7, -1.8);
+            torus.rotation.x = Math.PI / 2;
+            torus.name = "Purple Torus";
+            torus.userData = { description: "A donut-shaped torus", category: "advanced shapes" };
+            group.add(torus);
+            
+            // Orange Cone
+            const coneGeo = new THREE.ConeGeometry(0.55, 1.1, 32);
+            const coneMat = new THREE.MeshStandardMaterial({ color: 0xffaa33, metalness: 0.1, roughness: 0.6 });
+            const cone = new THREE.Mesh(coneGeo, coneMat);
+            cone.position.set(-1.5, 0.55, -1.5);
+            cone.name = "Orange Cone";
+            cone.userData = { description: "A pointed orange cone", category: "basic shapes" };
+            group.add(cone);
+            
+            return group;
+        }
+        
+        // File input handler
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', (event) => {
+            if (event.target.files.length) {
+                loadModel(event.target.files[0]);
+            }
+            fileInput.value = '';
+        });
+        
+        // Button handlers
+        document.getElementById('colorObjectBtn').addEventListener('click', () => {
+            const color = document.getElementById('colorPicker').value;
+            setColorToSelected(color);
+        });
+        
+        document.getElementById('resetTransparentBtn').addEventListener('click', () => {
+            resetAllToTransparent();
+        });
+        
+        // Initialize with demo objects
+        currentModelGroup = createDemoScene();
+        scene.add(currentModelGroup);
+        updateObjectList();
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        // Handle resize
+        window.addEventListener('resize', onWindowResize);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        updateStatus("✅ Demo scene loaded! You can also load IFC, GLTF, OBJ, or FBX files. Click on any object to select it!");
+        console.log("Initialized with", allObjects.length, "selectable objects");
+    </script>
+</body>
+</html>

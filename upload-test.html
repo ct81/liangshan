@@ -1,0 +1,81 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trimble Connect Upload Test</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    input, button {
+      margin-bottom: 1rem;
+      width: 100%;
+      padding: 0.5rem;
+    }
+    #file-name {
+      margin-top: -0.5rem;
+      margin-bottom: 1rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Trimble Connect File Upload Test</h1>
+
+  <div>
+    <label for="username">Username:</label>
+    <input type="text" id="username" placeholder="Enter your username">
+  </div>
+
+  <div>
+    <label for="access-token">Access Token:</label>
+    <input type="text" id="access-token" placeholder="Enter your Trimble Connect access token">
+  </div>
+
+  <div>
+    <label for="parent-folder-id">Parent Folder ID:</label>
+    <input type="text" id="parent-folder-id" placeholder="Enter the parent folder ID">
+  </div>
+
+  <div>
+    <label for="file-input">Select a file to upload:</label>
+    <input type="file" id="file-input">
+    <div id="file-name"></div>
+  </div>
+
+  <button id="upload-button">Upload File</button>
+
+  <script src="trimble-connect-upload.js"></script>
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const fileNameDisplay = document.getElementById('file-name');
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.textContent = `${fileInput.files[0].name}`;
+      } else {
+        fileNameDisplay.textContent = '';
+      }
+    });
+
+    document.getElementById('upload-button').addEventListener('click', async () => {
+      const usernameInput = document.getElementById('username');
+      const accessTokenInput = document.getElementById('access-token');
+      const parentFolderIdInput = document.getElementById('parent-folder-id');
+
+      const filename = fileInput.files[0].name;
+      const file = fileInput.files[0];
+      const username = usernameInput.value;
+      const accessToken = accessTokenInput.value;
+      const parentFolderId = parentFolderIdInput.value;
+
+      await uploadFile(filename, file, username, accessToken, parentFolderId);
+    });
+  </script>
+
+</body>
+</html>

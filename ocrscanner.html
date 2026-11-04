@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pro OCR Scanner - Complete | All Languages & Document Types</title>
+    <link rel="stylesheet" href="style3.css">
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="master.js" type="module" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <h1>
+        🌍 Multi-Language OCR Scanner 
+        <span class="badge">15+ Document Types</span>
+        <span class="lang-badge">🌐 14 Languages</span>
+        <span class="select-badge">🔘 Multi-Select</span>
+    </h1>
+    
+    <!-- Language Selection Panel -->
+    <div class="language-selector">
+        <span style="color:#94a3b8; font-size:0.85rem;">🌐 Select OCR Language:</span>
+        <select id="languageSelect">
+            <option value="auto">🤖 Auto-Detect Language</option>
+            <option value="eng">🇺🇸 English</option>
+            <option value="spa">🇪🇸 Spanish</option>
+            <option value="fra">🇫🇷 French</option>
+            <option value="deu">🇩🇪 German</option>
+            <option value="ita">🇮🇹 Italian</option>
+            <option value="por">🇵🇹 Portuguese</option>
+            <option value="rus">🇷🇺 Russian</option>
+            <option value="chi_sim">🇨🇳 Chinese (Simplified)</option>
+            <option value="chi_tra">🇹🇼 Chinese (Traditional)</option>
+            <option value="jpn">🇯🇵 Japanese</option>
+            <option value="kor">🇰🇷 Korean</option>
+            <option value="ara">🇸🇦 Arabic</option>
+            <option value="hin">🇮🇳 Hindi</option>
+        </select>
+        <div class="language-stats">
+            <div id="detectedLanguageDisplay" class="lang-detected">
+                🔍 Detected: <span id="detectedLangText">Not scanned yet</span>
+            </div>
+            <div id="selectedLanguageDisplay" class="lang-detected" style="background: #f59e0b;">
+                📌 Selected: <span id="selectedLangText">Auto-Detect</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Selection Controls -->
+    <div class="selection-controls">
+        <button id="singleSelectBtn" class="active">🔘 Single Select</button>
+        <button id="multiSelectBtn">✅ Multiple Select</button>
+        <button id="selectAllBtn" class="select-all">📌 Select All Modes</button>
+        <button id="clearAllBtn" class="clear-all">🗑️ Clear All</button>
+        <span style="color:#94a3b8;">Selected: <span id="selectedCount">1</span> mode(s)</span>
+    </div>
+    
+    <!-- Mode Selector -->
+    <div class="mode-selector" id="modeSelector">
+        <div class="mode-item" data-mode="auto"><input type="checkbox" value="auto" checked> 🤖 AUTO (Best Match)</div>
+        <div class="mode-item" data-mode="table"><input type="checkbox" value="table"> 📊 Table/Spreadsheet</div>
+        <div class="mode-item" data-mode="business"><input type="checkbox" value="business"> 💳 Business Card</div>
+        <div class="mode-item" data-mode="inspection"><input type="checkbox" value="inspection"> 🔍 Inspection Card</div>
+        <div class="mode-item" data-mode="attendance"><input type="checkbox" value="attendance"> 📋 Attendance Card</div>
+        <div class="mode-item" data-mode="document"><input type="checkbox" value="document"> 📄 Document/Letter</div>
+        <div class="mode-item" data-mode="form"><input type="checkbox" value="form"> 📋 Form/W-9</div>
+        <div class="mode-item" data-mode="receipt"><input type="checkbox" value="receipt"> 🧾 Receipt</div>
+        <div class="mode-item" data-mode="invoice"><input type="checkbox" value="invoice"> 🧾 Invoice</div>
+        <div class="mode-item" data-mode="label"><input type="checkbox" value="label"> 🏷️ Product Label</div>
+        <div class="mode-item" data-mode="pricetag"><input type="checkbox" value="pricetag"> 💰 Price Tag</div>
+        <div class="mode-item" data-mode="contract"><input type="checkbox" value="contract"> 📄 Contract</div>
+        <div class="mode-item" data-mode="toylabel"><input type="checkbox" value="toylabel"> 🧸 Toy Label</div>
+        <div class="mode-item" data-mode="handwriting"><input type="checkbox" value="handwriting"> ✍️ Handwriting</div>
+        <div class="mode-item" data-mode="code"><input type="checkbox" value="code"> 🔢 Code/Serial</div>
+    </div>
+    
+    <!-- Selected Modes Display -->
+    <div class="selected-modes" id="selectedModesDisplay">
+        <span style="color:#94a3b8; font-size:0.75rem;">📌 Selected modes:</span>
+        <div id="selectedTags"></div>
+    </div>
+
+    <div class="dual-panel">
+        <div class="camera-section">
+            <div class="camera-box">
+                <div class="video-container">
+                    <video id="video" autoplay playsinline muted></video>
+                    <div id="detectionBox" class="detection-box">
+                        <div class="resize-handle" id="resizeHandle"></div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="startCamBtn">📷 Start Camera</button>
+                    <button id="captureBtn" class="primary">🎯 SCAN SELECTED</button>
+                    <button id="uploadBtn">📁 Upload Image</button>
+                </div>
+                <div class="area-controls">
+                    <button id="resetAreaBtn">🔄 Reset Area</button>
+                    <button id="fullAreaBtn">📐 Full Frame</button>
+                </div>
+                <div class="settings-panel">
+                    <div class="setting-item"><input type="checkbox" id="autoEnhance" checked><label>✨ Auto-Enhance</label></div>
+                    <div class="setting-item"><input type="checkbox" id="preciseMode" checked><label>🎯 Precision</label></div>
+                    <div class="setting-item"><select id="resolution"><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1920">4K</option></select></div>
+                </div>
+                <div class="status" id="statusMsg">⚫ Ready - Select language, modes, and scan</div>
+                <div class="coord-info" id="coordInfo">Full Frame</div>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <div class="result-tabs">
+                <button class="tab-btn active" data-tab="formatted">🏆 Best Result</button>
+                <button class="tab-btn" data-tab="batch">📦 All Results</button>
+                <button class="tab-btn" data-tab="json">🔢 JSON</button>
+                <button class="tab-btn" data-tab="raw">📝 Raw Text</button>
+            </div>
+            <div class="output-area">
+                <div id="formattedTab"></div>
+                <div id="batchTab" style="display:none;"></div>
+                <div id="jsonTab" style="display:none;"></div>
+                <div id="rawTab" style="display:none;"></div>
+            </div>
+            <div class="ocr-stats" id="ocrStats" style="display:none;">
+                <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill"></div></div>
+                <div class="stats">
+                    <span>🏆 Best Mode: <span id="bestMode">-</span></span>
+                    <span>📊 Confidence: <span id="confidenceValue">0</span>%</span>
+                    <span>🌐 Language Used: <span id="displayLanguage">-</span></span>
+                    <span>📝 Words: <span id="wordCount">0</span></span>
+                    <span>⏱️ Time: <span id="processTime">0</span>ms</span>
+                    <span>🎯 Modes: <span id="modesCount">0</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="main3.js"></script>
+</body>
+</html>

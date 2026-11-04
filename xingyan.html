@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>行眼 AI Safety Sentinel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text-main">行眼 AI SAFETY SENTINEL</div>
+        <div class="loading-progress"><div class="loading-progress-bar" id="loadingProgress"></div></div>
+        <div class="loading-detail" id="loadingDetail">Initializing Detection System...</div>
+        <div class="loading-steps" id="loadingSteps">
+            <div class="loading-step" id="step1"><span class="step-icon"></span> TensorFlow Engine</div>
+            <div class="loading-step" id="step2"><span class="step-icon"></span> COCO-SSD AI Models</div>
+            <div class="loading-step" id="step3"><span class="step-icon"></span> MoveNet Pose Detection</div>
+            <div class="loading-step" id="step4"><span class="step-icon"></span> Machine Learning</div>
+            <div class="loading-step" id="step5"><span class="step-icon"></span> Offline & Long Range Detection</div>
+            <div class="loading-step" id="step6"><span class="step-icon"></span> Webhook Notification</div>
+            <div class="loading-step" id="step7"><span class="step-icon"></span> Vision Modes & Danger Zone</div>
+            <div class="loading-step" id="step8"><span class="step-icon"></span> AI Models & Custom Models Analyzing</div>
+            <div class="loading-step" id="step9"><span class="step-icon"></span> Video Recording & Screen Capture</div>
+            <div class="loading-step" id="step10"><span class="step-icon"></span> Alerts logs</div>
+            <div class="loading-step" id="step11"><span class="step-icon"></span> Real-Time Streaming</div>
+        </div>
+    </div>
+
+    <div class="offline-badge" id="offlineBadge">📡 OFFLINE MODE - Cache Active</div>
+
+    <div class="container">
+        <div class="card">
+            <h1>🛡️ 行眼 AI Safety Sentinel <span class="badge">Incremental Model IDs in Alert Logs</span></h1>
+            <div class="sub">🔴 Each custom model has a unique incremental number (Model 1, Model 2, etc.) - Shown in detection logs</div>
+
+            <div class="recording-panel">
+                <div class="recording-title">🔴 LIVE VIDEO RECORDING (Auto-saves to your computer)</div>
+                <div class="recording-buttons">
+                    <button class="rec-btn" id="startRecordBtn" onclick="startRecording()" disabled>⏺ Start Recording</button>
+                    <button class="rec-btn" id="stopRecordBtn" onclick="stopRecording()" disabled>⏹️ Stop & Save</button>
+                </div>
+                <div style="font-size:0.5rem; color:#9ca3af; margin-top:6px;">💡 Records detection overlays (boxes, skeletons, danger zone) | Auto-saves as WebM when stopped | Files go to Downloads folder</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <button class="toggle-panel-btn" id="togglePlaybackBtn" onclick="togglePlaybackPanel()">📼 Show Playback Panel</button>
+                <span style="font-size:0.6rem; color:#9ca3af;">Click to show/hide recorded videos</span>
+            </div>
+
+            <div class="playback-panel hidden" id="playbackPanel">
+                <div class="playback-title">📼 PLAYBACK - Watch Recorded Videos</div>
+                <video id="playbackVideo" class="playback-video" controls></video>
+                <div class="recordings-list" id="recordingsList">
+                    <div style="color:#9ca3af; text-align:center; padding:10px;">No recordings yet. Start recording to save videos.</div>
+                </div>
+                <div class="btn-group" style="margin-top:8px;">
+                    <button onclick="playRecording()" class="primary">▶️ Play Selected</button>
+                    <button onclick="stopPlayback()" class="danger">⏹️ Stop</button>
+                    <button onclick="clearRecordings()">🗑️ Clear List</button>
+                    <button onclick="saveSelectedRecording()">💾 Save Selected Again</button>
+                </div>
+            </div>
+
+            <div class="webhook-panel">
+                <div class="webhook-title">🌐 WEBHOOK NOTIFICATIONS (Optional)</div>
+                <input type="text" id="webhookUrlInput" class="webhook-input" placeholder="https://your-server.com/webhook">
+                <div class="webhook-buttons">
+                    <button class="webhook-btn" onclick="testWebhook()">📡 Test</button>
+                    <button class="webhook-btn" id="webhookToggleBtn" onclick="toggleWebhook()">🔔 OFF</button>
+                </div>
+            </div>
+
+            <div class="vision-panel">
+                <div class="vision-title">🎨 VISION MODES</div>
+                <div class="vision-buttons">
+                    <button class="vision-btn" onclick="setVisionMode('normal')">👁️ Normal</button>
+                    <button class="vision-btn" onclick="setVisionMode('night')">🌙 Night</button>
+                    <button class="vision-btn" onclick="setVisionMode('infrared')">🔥 Infrared</button>
+                    <button class="vision-btn" onclick="setVisionMode('predator')">🦅 Predator</button>
+                    <button class="vision-btn" onclick="setVisionMode('thermal')">🌡️ Thermal</button>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="control-title">⚠️ DANGER ZONE - Click on video to draw polygon</div>
+                <div class="control-buttons">
+                    <button class="ctrl-btn danger" onclick="startDrawingZone()">✏️ Draw</button>
+                    <button class="ctrl-btn danger" onclick="completeDrawingZone()">✅ Complete</button>
+                    <button class="ctrl-btn danger" onclick="clearDangerZone()">🗑️ Clear</button>
+                    <button class="ctrl-btn danger" id="dangerAlertToggleBtn" onclick="toggleDangerAlerts()">🔔 ON</button>
+                </div>
+            </div>
+
+            <div class="model-status-bar">
+                <div class="model-status-item"><div class="model-status-dot coco"></div><span>COCO-SSD: <strong id="cocoStatus">Loading...</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot tm"></div><span>Custom Models: <strong id="tmCountStatus">0</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot pose"></div><span>Pose: <strong id="skeletonStatus">Loading...</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot danger"></div><span>Danger Zone: <strong id="dangerZoneStatus">Inactive</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot recording"></div><span>Recording: <strong id="recordingStatus">Stopped</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot webhook"></div><span>Webhook: <strong id="webhookStatus">Disabled</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot vision"></div><span>Vision: <strong id="visionStatus">Normal</strong></span></div>
+                <div class="model-status-item"><div class="model-status-dot offline"></div><span>Offline: <strong id="offlineStatus">Online</strong></span></div>
+            </div>
+
+            <div class="model-selector-section">
+                <div class="selector-title">
+                    🎯 SELECT ACTIVE MODEL
+                    <button class="notification-permission-btn" onclick="requestNotificationPermission()">🔔 Notifications</button>
+                    <button class="notification-permission-btn" onclick="testNotification()">📢 Test</button>
+                </div>
+                <div class="selector-buttons">
+                    <div class="model-choice-btn coco active" onclick="setActiveModel('coco')">🎯 COCO-SSD</div>
+                    <div class="model-choice-btn custom" onclick="setActiveModel('custom')">🧠 CUSTOM</div>
+                    <div class="model-choice-btn both" onclick="setActiveModel('both')">🔄 BOTH</div>
+                </div>
+                <div id="activeModelStatus" style="font-size:0.6rem; text-align:center; margin-top:8px; color:#8F9BB3;">Current: COCO-SSD ONLY</div>
+            </div>
+
+            <div class="range-panel">
+                <div class="range-title"><span>🔭 SUPER ZOOM (1x - 10x)</span><span id="accuracyIndicator">🎯 High Accuracy</span></div>
+                <div class="threshold-slider"><span>🔍 Digital Zoom:</span><input type="range" id="zoomSlider" min="1.0" max="10.0" step="0.1" value="1.0"><span id="zoomValue" class="threshold-value">1.0x</span></div>
+                <div class="threshold-slider"><span>🎯 Confidence:</span><input type="range" id="confidenceSlider" min="0.3" max="0.9" step="0.05" value="0.5"><span id="confidenceValue" class="threshold-value">50%</span></div>
+                <div class="distance-info"><span>📏 Est. Distance: <strong id="estimatedDistance">~100m</strong></span><span>📐 FOV: <strong id="fovStatus">Wide</strong></span><span>🎯 Zoom Level: <strong id="zoomLevel">1x</strong></span></div>
+            </div>
+
+            <div class="models-section">
+                <div class="models-header"><span>🧠 TEACHABLE MACHINE MODELS (Incremental IDs: Model 1, Model 2, etc.)</span><button class="add-model-btn" onclick="addModelEntry()">+ Add Model</button></div>
+                <div id="modelsList"><div class="model-entry" id="modelEntry0"><div class="model-entry-header"><span class="model-name">Model 1</span><div><input type="text" class="model-url-input" id="modelUrl0" value="https://teachablemachine.withgoogle.com/models/hTcJ2kJNX/"><button class="model-load-btn" onclick="loadSpecificModel(0)">Load</button><button class="model-remove-btn" onclick="removeModel(0)">Remove</button></div></div><div class="model-status-text" id="modelStatus0">Not loaded - Click Load to start</div></div></div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('uploadInput').click()"><div class="upload-icon">📤</div><div>Upload image for analysis</div><input type="file" id="uploadInput" class="upload-input" accept="image/*"></div>
+                <div class="upload-preview" id="uploadPreview"><img id="uploadedImage" alt="Preview"><div class="btn-group"><button onclick="analyzeUploadedImage()" class="primary">🔍 Analyze</button><button onclick="clearUploadedImage()">🗑️ Clear</button></div></div>
+            </div>
+
+            <div class="resolution-buttons"><span>Quality:</span><button class="res-btn" onclick="setCameraResolution('480p')">480p</button><button class="res-btn" onclick="setCameraResolution('720p')">720p</button><button class="res-btn active" onclick="setCameraResolution('1080p')">1080p</button><button class="res-btn" onclick="setCameraResolution('1440p')">1440p (2K)</button><button class="res-btn" onclick="setCameraResolution('2160p')">2160p (4K)</button></div>
+
+            <div class="detection-results-panel"><div class="results-title">📊 LIVE RESULTS</div><div class="results-content" id="resultsContent"><div style="color:#9ca3af; text-align:center;">No detections yet</div></div></div>
+
+            <div class="legend">
+                <div class="legend-item"><div class="legend-line"></div><div class="legend-dot"></div><span>Human Skeleton + GREEN Box</span></div>
+                <div class="legend-item"><div class="legend-color" style="background:#3b82f6;"></div><span>Vehicle (Blue Box)</span></div>
+                <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div><span>Animal (Yellow Box)</span></div>
+                <div class="legend-item"><div class="legend-color" style="background:#9ca3af;"></div><span>Other (Gray Box)</span></div>
+                <div class="legend-item"><div class="legend-dashed"></div><span style="color: #a855f7;">CUSTOM MODEL: PURPLE DASHED + CATEGORY COLOR</span></div>
+                <div class="legend-item"><div class="legend-danger"></div><span>DANGER ZONE</span></div>
+                <div class="legend-item"><span>🆔 Session ID</span></div>
+                <div class="legend-item"><span>🔴 Auto-Save Recording</span></div>
+                <div class="legend-item"><span>🔍 10x Super Zoom</span></div>
+                <div class="legend-item"><span>🔢 Model ID in Logs (Model 1, etc.)</span></div>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card" onclick="takeScreenshot()"><span>📸</span><div class="feature-name">Screenshot</div></div>
+                <div class="feature-card" onclick="generateReport()"><span>📊</span><div class="feature-name">Report</div></div>
+                <div class="feature-card" onclick="playTestAudio()" hidden><span>🔊</span><div class="feature-name">Test Audio</div></div>
+                <div class="feature-card" onclick="toggleAudio()"><span>🔇</span><div class="feature-name" id="audioToggleLabel">Mute</div></div>
+                <div class="feature-card" onclick="testNotification()" hidden><span>🔔</span><div class="feature-name">Test</div></div>
+                <div class="feature-card" onclick="setVisionMode('normal')"><span>👁️</span><div class="feature-name">Normal</div></div>
+                <div class="feature-card" onclick="setVisionMode('thermal')"><span>🌡️</span><div class="feature-name">Thermal</div></div>
+                <div class="feature-card" onclick="clearDangerZone()"><span>🚫</span><div class="feature-name">Clear Zone</div></div>
+            </div>
+
+            <div class="camera-controls">
+                <button class="camera-btn" id="backCameraBtn" onclick="switchCamera('back')">📷 BACK</button>
+                <button class="camera-btn" id="frontCameraBtn" onclick="switchCamera('front')">🤳 FRONT</button>
+            </div>
+
+            <div class="two-columns">
+                <div class="panel">
+                    <h3>📹 Live Feed <button onclick="toggleFullscreen()" class="camera-btn" style="background: #3b82f6; border-color: #3b82f6; margin-left: 10px; " hidden>🖥️ Fullscreen</button></h3>
+                    <div class="video-wrapper" id="videoWrapper">
+                        <video id="video" autoplay muted playsinline></video>
+                        <canvas id="canvas"></canvas>
+                        <div class="fullscreen-btn" onclick="toggleFullscreen()">⛶</div>
+                        <div class="id-indicator" id="sessionIndicator">🆔 SESSION: ---</div>
+                        <div class="camera-indicator" id="camStatus">⚫ Off</div>
+                        <div class="performance-info" id="perfInfo">⚡ Ready</div>
+                        <div class="distance-badge" id="distanceBadge">📏 ~0m</div>
+                        <div class="detection-status-badge" id="detectionStatusBadge">⚫ OFF</div>
+                        <div class="model-badge" id="modelBadge">COCO</div>
+                        <div class="dangerzone-info" id="dangerzoneInfo">🚧 No Zone</div>
+                        <div class="vision-indicator" id="visionIndicator">👁️ Normal</div>
+                        <div class="recording-badge" id="recordingBadge">🔴 RECORDING</div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="startCamera()" class="primary" id="startCamBtn" disabled>▶️ Start</button>
+                        <button onclick="stopCamera()" class="danger" disabled id="stopCamBtn">⏹️ Stop</button>
+                        <button onclick="toggleDetection()" id="pauseBtn" disabled>⏸️ Pause</button>
+                    </div>
+                    <div class="status" id="statusMsg">Loading...</div>
+                    <div id="errorMsg" style="display:none;"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>📊 Detection Logs (Model IDs shown for custom detections)</h3>
+                    <div class="stats-panel">
+                        <div class="stat-card"><div class="stat-value" id="totalDetections">0</div><div class="stat-label">Total</div></div>
+                        <div class="stat-card"><div class="stat-value" id="fpsCounter">0</div><div class="stat-label">FPS</div></div>
+                        <div class="stat-card"><div class="stat-value" id="rangeIndicator">40m</div><div class="stat-label">Range</div></div>
+                        <div class="stat-card"><div class="stat-value" id="riskScore">0</div><div class="stat-label">Risk</div></div>
+                    </div>
+                    <div class="detection-grid">
+                        <div class="detection-card"><div class="detection-count human-count" id="humanCount">0</div><div class="detection-label">👤 Human</div></div>
+                        <div class="detection-card"><div class="detection-count animal-count" id="animalCount">0</div><div class="detection-label">🐕 Animal</div></div>
+                        <div class="detection-card"><div class="detection-count vehicle-count" id="vehicleCount">0</div><div class="detection-label">🚗 Vehicle</div></div>
+                        <div class="detection-card"><div class="detection-count other-count" id="otherCount">0</div><div class="detection-label">📦 Other</div></div>
+                        <div class="detection-card"><div class="detection-count danger-count" id="dangerCount">0</div><div class="detection-label">⚠️ Danger</div></div>
+                    </div>
+                   
+                    <!-- ALERT SEARCH BAR -->
+                    <div class="alert-search-container">
+                        <input type="text" id="alertSearchInput" class="alert-search-input" placeholder="🔍 Search logs (Ctrl+F)..." oninput="searchAlerts()">
+                        <span class="alert-search-count" id="alertSearchCount"></span>
+                    </div>
+                   
+                    <!-- QUICK FILTER BUTTONS -->
+                    <div class="quick-filter-btns">
+                        <button class="quick-filter-btn danger-filter" onclick="quickSearch('⚠️ DANGER')">⚠️ Danger</button>
+                        <button class="quick-filter-btn human-filter" onclick="quickSearch('Human')">👤 Humans</button>
+                        <button class="quick-filter-btn vehicle-filter" onclick="quickSearch('Vehicle')">🚗 Vehicles</button>
+                        <button class="quick-filter-btn custom-filter" onclick="quickSearch('Model')">🧠 Custom</button>
+                        <button class="quick-filter-btn coco-filter" onclick="quickSearch('COCO')">🎯 COCO-SSD</button>
+                        <button class="quick-filter-btn" onclick="clearSearch()" style="border-color:#6b7280;color:#6b7280;">✕ Clear</button>
+                    </div>
+                   
+                    <div class="alert-header" style="margin-top:8px;">
+                        <span>🔔 DETECTION LOGS</span>
+                        <button class="clear-logs-btn" onclick="clearLogs()">🗑️ Clear</button>
+                    </div>
+                    <div class="alert-list" id="alertList"><div style="color:#9ca3af; text-align:center; padding:20px;">No detections yet</div></div>
+                </div>
+            </div>
+
+            <footer>🔍 10x Super Zoom | Each custom model has a unique incremental number (Model 1, Model 2, etc.) shown in logs | Purple dashed = Custom Model | Solid = COCO-SSD</footer>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
