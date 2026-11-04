@@ -19,14 +19,14 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                         console.log("=====GET1: " + obj);
                         window.open(locationParent + '/index.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
-                    else if (obj == 'submenu_2_clicked') {
-                        console.log("=====GET2: " + obj);
-                        window.open(locationParent + '/facereg.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
-                    }
-                    else if (obj == 'submenu_3_clicked') {
-                        console.log("=====GET3: " + obj);
-                        window.open(locationParent + '/ocrscanner.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
-                    }
+                    // else if (obj == 'submenu_2_clicked') {
+                    //     console.log("=====GET2: " + obj);
+                    //     window.open(locationParent + '/facereg.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    // }
+                    // else if (obj == 'submenu_3_clicked') {
+                    //     console.log("=====GET3: " + obj);
+                    //     window.open(locationParent + '/ocrscanner.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    // }
                     break;
                 case "extension.accessToken":
                     //"Accestoken or status: args.data"
@@ -42,24 +42,24 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
         API_Ext.ui.setMenu({
             title: "AI Safety Sentinel"
-            , icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png"
+            , icon: "https://api.iconify.design/twemoji/safety-pin.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 {
                     title: "Safety Camera",
-                    icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
+                    icon: "https://img.icons8.com/fluency/48/worker-beard.png",
                     command: "submenu_1_clicked",
                 }
-                ,{
-                    title: "Face Recognition",
-                    icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
-                    command: "submenu_2_clicked",
-                }
-                ,{
-                    title: "OCR Scanner",
-                    icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
-                    command: "submenu_3_clicked",
-                }
+                // ,{
+                //     title: "Face Recognition",
+                //     icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
+                //     command: "submenu_2_clicked",
+                // }
+                // ,{
+                //     title: "OCR Scanner",
+                //     icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
+                //     command: "submenu_3_clicked",
+                // }
                 // , {
                 //     title: "Auth",
                 //     icon: "https://components.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png",
