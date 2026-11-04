@@ -1,0 +1,19 @@
+# Dataset config for training (YOLO format).
+# Folder layout:
+#   dataset/train/images/*.jpg   dataset/train/labels/*.txt
+#   dataset/valid/images/*.jpg   dataset/valid/labels/*.txt
+#
+# IMPORTANT: the class ORDER must match the label files you downloaded.
+#   D-Fire dataset:  0 = smoke, 1 = fire   (water_leak = 2 is added from a separate dataset,
+#                                           see prepare_dataset.py --append --remap)
+#   Some others:     0 = fire,  1 = smoke   (e.g. FASDD)
+# If you mix datasets, remap one of them so they agree.
+
+# (train.py fills in the absolute dataset path automatically)
+train: train/images
+val: valid/images
+
+names:
+  0: smoke
+  1: fire
+  2: water_leak

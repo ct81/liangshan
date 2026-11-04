@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 {
-                    title: "Safety Camera",
+                    title: "PPE",
                     icon: "https://img.icons8.com/fluency/48/worker-beard.png",
                     command: "submenu_1_clicked",
                 }

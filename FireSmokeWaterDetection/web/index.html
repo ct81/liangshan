@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Fire, Smoke &amp; Water Leak Detection</title>
+<style>
+  :root {
+    --bg: #12151a; --panel: #1b2027; --text: #e8eaed; --muted: #9aa3ad;
+    --accent: #ff7a1a; --ok: #3ecf6e; --danger: #ff3b30; --border: #2b323b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f4f5f7; --panel: #fff; --text: #1d2126; --muted: #5f6b76; --border: #d9dde2; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, Segoe UI, Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; }
+  .status { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+         background: var(--muted); margin-right: 6px; }
+  .dot.on { background: var(--ok); } .dot.bad { background: var(--danger); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  #alert { padding: 14px 18px; border-radius: 10px; font-weight: 700; font-size: 18px;
+           text-align: center; background: var(--panel); border: 1px solid var(--border); color: var(--muted); }
+  #alert.fire { background: var(--danger); color: #fff; border-color: var(--danger); animation: pulse 0.8s infinite; }
+  #alert.smoke { background: #7a8794; color: #fff; border-color: #7a8794; }
+  #alert.leak { background: #1e7fe0; color: #fff; border-color: #1e7fe0; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .65; } }
+  .stage { position: relative; background: #000; border-radius: 10px; overflow: hidden; min-height: 200px; }
+  video { display: block; width: 100%; height: auto; }
+  canvas#overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .controls { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+              padding: 14px; display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+  label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  select, input[type=range] { accent-color: var(--accent); }
+  input[type=text] { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+                     border-radius: 6px; padding: 6px 8px; }
+  select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+           border-radius: 6px; padding: 6px 8px; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+           padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.stop { background: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .classes { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--muted);
+             padding: 4px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .classes i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  #list { font-size: 13px; color: var(--muted); min-height: 20px; }
+  #msg { font-size: 13px; color: var(--danger); min-height: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live Fire, Smoke &amp; Water Leak Detection</h1>
+  <div class="status">
+    <span><span class="dot" id="srvDot"></span><span id="srvTxt">Checking server...</span></span>
+    <span>Latency: <b id="lat">-</b> ms</span>
+    <span>Detection rate: <b id="fps">-</b> /s</span>
+  </div>
+</header>
+
+<main>
+  <div id="alert">No fire, smoke or water leak detected</div>
+
+  <div class="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div class="controls">
+    <button id="toggle">Start camera</button>
+    <label>Server <input type="text" id="api" size="24" spellcheck="false"
+      title="Address of the Python server (python app.py)"></label>
+    <label>Camera <select id="cam"><option value="">Default</option></select></label>
+    <label>Confidence <input type="range" id="conf" min="0.05" max="0.95" step="0.05" value="0.25">
+      <b id="confVal">0.25</b></label>
+    <label>Alert min confidence
+      <select id="alertConf">
+        <option value="0.25">0.25</option><option value="0.4">0.40</option>
+        <option value="0.5" selected>0.50</option><option value="0.6">0.60</option>
+        <option value="0.7">0.70</option><option value="0.8">0.80</option>
+      </select></label>
+    <label>Confirm alert
+      <select id="confirm">
+        <option value="1">Instant</option>
+        <option value="3" selected>3 of last 5 frames</option>
+        <option value="4">4 of last 5 frames</option>
+      </select></label>
+    <label>Frame size
+      <select id="size">
+        <option value="640">640 (fast)</option>
+        <option value="960" selected>960</option>
+        <option value="1280">1280 (sharpest)</option>
+      </select></label>
+    <label>Speed
+      <select id="rate">
+        <option value="100">Fast (~10/s)</option>
+        <option value="250" selected>Normal (~4/s)</option>
+        <option value="500">Slow (~2/s)</option>
+        <option value="1000">Very slow (1/s)</option>
+      </select>
+    </label>
+    <span class="classes">Detect:
+      <label><input type="checkbox" id="chkFire" data-kind="fire" checked> <i style="background:#ff3b30"></i>Fire</label>
+      <label><input type="checkbox" id="chkSmoke" data-kind="smoke" checked> <i style="background:#aab4be"></i>Smoke</label>
+      <label><input type="checkbox" id="chkLeak" data-kind="leak" checked> <i style="background:#1e90ff"></i>Water leak</label>
+    </span>
+    <label><input type="checkbox" id="sound" checked> Alarm sound</label>
+  </div>
+
+  <div id="list"></div>
+  <div id="msg"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const video = $('video'), overlay = $('overlay'), octx = overlay.getContext('2d');
+const grab = document.createElement('canvas'), gctx = grab.getContext('2d');
+
+let stream = null, running = false, lastAlarm = 0, audioCtx = null;
+
+// ---- server address ----
+// Served by Flask (port 5000)  -> same origin.  Hosted elsewhere (e.g. Visual Studio) -> Flask on :5000.
+const params = new URLSearchParams(location.search);
+$('api').value = params.get('api') ||
+  (location.port === '5000' ? location.origin : 'http://localhost:5000');
+const apiUrl = path => $('api').value.trim().replace(/\/+$/, '') + path;
+
+function checkServer() {
+  $('srvDot').className = 'dot'; $('srvTxt').textContent = 'Checking server...';
+  return fetch(apiUrl('/health')).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(() => {
+    $('srvDot').className = 'dot on'; $('srvTxt').textContent = 'Server connected';
+    $('msg').textContent = ''; return true;
+  }).catch(() => {
+    $('srvDot').className = 'dot bad';
+    $('srvTxt').textContent = 'Server not reachable';
+    $('msg').textContent = 'Cannot reach ' + $('api').value + ' - start it with: python app.py';
+    return false;
+  });
+}
+$('api').addEventListener('change', checkServer);
+checkServer();
+
+$('conf').addEventListener('input', e => $('confVal').textContent = (+e.target.value).toFixed(2));
+
+// ---- camera ----
+async function listCameras() {
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const cur = $('cam').value;
+  $('cam').innerHTML = '<option value="">Default</option>' +
+    devs.map((d, i) => `<option value="${d.deviceId}">${d.label || 'Camera ' + (i + 1)}</option>`).join('');
+  $('cam').value = cur;
+}
+
+async function startCamera() {
+  $('msg').textContent = '';
+  const id = $('cam').value;
+  const constraints = { audio: false, video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+  if (id) constraints.video.deviceId = { exact: id };
+  else constraints.video.facingMode = 'environment';
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (e) {
+    $('msg').textContent = 'Cannot access camera: ' + e.message +
+      ' (camera needs http://localhost or https)';
+    return false;
+  }
+  video.srcObject = stream;
+  await video.play();
+  await listCameras();
+  return true;
+}
+
+function stopCamera() {
+  running = false;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; hist = []; lastData = null;
+  video.srcObject = null;
+  octx.clearRect(0, 0, overlay.width, overlay.height);
+  setAlert(null);
+  $('list').textContent = '';
+}
+
+$('toggle').addEventListener('click', async () => {
+  if (running) {
+    stopCamera();
+    $('toggle').textContent = 'Start camera';
+    $('toggle').classList.remove('stop');
+    return;
+  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (await startCamera()) {
+    running = true;
+    $('toggle').textContent = 'Stop camera';
+    $('toggle').classList.add('stop');
+    loop();
+  }
+});
+
+$('cam').addEventListener('change', async () => {
+  if (!running) return;
+  stream.getTracks().forEach(t => t.stop());
+  await startCamera();
+});
+
+// ---- detection loop ----
+let times = [], failed = false, hist = [], lastData = null;
+async function loop() {
+  if (!running) return;
+  const t0 = performance.now();
+  failed = false;
+
+  try {
+    if (video.videoWidth > 0) {
+      const size = +$('size').value;
+      const scale = Math.min(1, size / video.videoWidth);
+      grab.width = Math.round(video.videoWidth * scale);
+      grab.height = Math.round(video.videoHeight * scale);
+      gctx.drawImage(video, 0, 0, grab.width, grab.height);
+      const blob = await new Promise(r => grab.toBlob(r, 'image/jpeg', 0.92));
+
+      const res = await fetch(apiUrl('/detect?conf=' + $('conf').value + '&imgsz=' + size), {
+        method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob
+      });
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+      draw(data);
+      $('lat').textContent = data.ms;
+      $('srvDot').className = 'dot on';
+      $('srvTxt').textContent = 'Server connected';
+      $('msg').textContent = '';
+    }
+  } catch (e) {
+    failed = true;
+    $('srvDot').className = 'dot bad';
+    $('srvTxt').textContent = 'Server error';
+    $('msg').textContent = e.message + ' (' + $('api').value + ')';
+  }
+
+  const now = performance.now();
+  times.push(now); times = times.filter(t => now - t < 3000);
+  if (times.length > 1) $('fps').textContent = ((times.length - 1) / ((now - times[0]) / 1000)).toFixed(1);
+
+  const wait = failed ? 2000 : Math.max(0, +$('rate').value - (now - t0));
+  setTimeout(loop, wait);
+}
+
+// ---- drawing ----
+const COLORS = { fire: '#ff3b30', smoke: '#aab4be', leak: '#1e90ff' };
+const kindOf = l => { l = l.toLowerCase();
+  return l.includes('fire') ? 'fire' : l.includes('smoke') ? 'smoke' :
+         (l.includes('leak') || l.includes('water')) ? 'leak' : null; };
+const colorFor = l => COLORS[kindOf(l)] || '#ffb020';
+
+function draw(data) {
+  overlay.width = video.clientWidth;
+  overlay.height = video.clientHeight;
+  const sx = overlay.width / data.width, sy = overlay.height / data.height;
+  octx.clearRect(0, 0, overlay.width, overlay.height);
+  octx.lineWidth = 3; octx.font = '600 14px system-ui, sans-serif'; octx.textBaseline = 'top';
+
+  lastData = data;
+  // only show/alert on the classes that are ticked (labels the page does not recognise are always shown)
+  const enabled = { fire: $('chkFire').checked, smoke: $('chkSmoke').checked, leak: $('chkLeak').checked };
+  const shown = data.detections.filter(d => { const k = kindOf(d.label); return !k || enabled[k]; });
+
+  let hasFire = false, hasSmoke = false, hasLeak = false;
+  const alertMin = +$('alertConf').value;
+  for (const d of shown) {
+    const [x1, y1, x2, y2] = d.box;
+    const x = x1 * sx, y = y1 * sy, w = (x2 - x1) * sx, h = (y2 - y1) * sy;
+    const c = colorFor(d.label);
+    octx.strokeStyle = c; octx.strokeRect(x, y, w, h);
+    const text = `${d.label} ${(d.conf * 100).toFixed(0)}%`;
+    const tw = octx.measureText(text).width + 10;
+    const ty = y - 22 < 0 ? y : y - 22;
+    octx.fillStyle = c; octx.fillRect(x, ty, tw, 22);
+    octx.fillStyle = '#fff'; octx.fillText(text, x + 5, ty + 4);
+    const l = d.label.toLowerCase();
+    if (d.conf >= alertMin) {            // boxes below this are shown but do not raise the alarm
+      if (l.includes('fire')) hasFire = true;
+      if (l.includes('smoke')) hasSmoke = true;
+      if (kindOf(l) === 'leak') hasLeak = true;
+    }
+  }
+
+  $('list').textContent = shown.length
+    ? 'Detected: ' + shown.map(d => `${d.label} (${(d.conf * 100).toFixed(0)}%)`).join(', ')
+    : '';
+  // require the detection in N of the last 5 frames before alerting (filters one-frame false alarms)
+  hist.push({ fire: hasFire, smoke: hasSmoke, leak: hasLeak });
+  if (hist.length > 5) hist.shift();
+  const need = +$('confirm').value;
+  const fireHits = hist.filter(x => x.fire).length;
+  const smokeHits = hist.filter(x => x.smoke).length;
+  const leakHits = hist.filter(x => x.leak).length;
+  setAlert(fireHits >= need ? 'fire' : smokeHits >= need ? 'smoke' : leakHits >= need ? 'leak' : null);
+}
+
+document.querySelectorAll('.classes input').forEach(c => c.addEventListener('change', () => {
+  hist = [];                       // forget earlier frames so a switched-off class stops alerting at once
+  if (lastData) draw(lastData);    // redraw the last result with the new selection
+  else setAlert(null);
+}));
+
+function setAlert(kind) {
+  const el = $('alert');
+  el.className = kind || '';
+  el.textContent = kind === 'fire' ? 'FIRE DETECTED' :
+                   kind === 'smoke' ? 'SMOKE DETECTED' :
+                   kind === 'leak' ? 'WATER LEAK DETECTED' : 'No fire, smoke or water leak detected';
+  if (kind && $('sound').checked) beep();
+}
+
+function beep() {
+  const now = Date.now();
+  if (!audioCtx || now - lastAlarm < 2000) return;
+  lastAlarm = now;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.08;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.35);
+}
+
+window.addEventListener('beforeunload', stopCamera);
+</script>
+</body>
+</html>
