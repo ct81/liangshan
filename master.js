@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 {
                     title: "QuadraSense",
                     icon: "https://img.icons8.com/bubbles/100/fire-element.png",
-                    command: "submenu_1_clicked",
+                    command: "submenu_2_clicked",
                 }
                 // ,{
                 //     title: "Face Recognition",
