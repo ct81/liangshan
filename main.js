@@ -934,5 +934,13 @@ async function loadAllModels() {
         if (audioEnabled) speakText('All systems ready. Each custom model has a unique ID shown in detection logs.');
     }, 1000);
 }
-loadAllModels();
+loadAllModels().catch((error) => {
+    console.error('Model initialization failed:', error);
+    if (loadingOverlayDiv) loadingOverlayDiv.style.display = 'none';
+    if (statusMsgSpan) statusMsgSpan.textContent = 'AI models failed to load. Check your connection and reload.';
+    if (errorMsgDiv) {
+        errorMsgDiv.textContent = 'The interface is available, but camera detection is unavailable until the AI models load.';
+        errorMsgDiv.style.display = 'block';
+    }
+});
 window.addEventListener('beforeunload', () => { if (stream) stream.getTracks().forEach(t => t.stop()); if (animationId) cancelAnimationFrame(animationId); window.speechSynthesis.cancel(); });
